@@ -1,0 +1,1 @@
+b'File from server \n\nThis is the testing file sent from the Server to the Client.'
