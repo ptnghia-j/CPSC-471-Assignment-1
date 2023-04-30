@@ -1,6 +1,5 @@
 import socket
 from abc import ABC, abstractmethod
-from codecs import unicode_escape_decode
 
 
 class Connection:

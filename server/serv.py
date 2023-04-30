@@ -23,6 +23,12 @@ class ftp_server:
       # Read the message to find out about the type of request
       request = self.control_channel.recv_data_payload().decode()
   
+      if request != 'quit':
+        server_data_socket = self.control_channel.init_data_channel()
+        data_channel = serverConnection(conn = server_data_socket)
+        data_channel.identity = "Data"
+        self.data_channel = data_channel
+
       if request == "get":
         self.serve_get_request()
 
@@ -39,14 +45,15 @@ class ftp_server:
         print("Something wrong")
         break
 
+      if request != 'quit':
+        self.data_channel = None
+        #Note: close must be called to destroy the reference to socket connection
+        server_data_socket.close()
+        del data_channel
+
       print(" \n")
 
   def serve_get_request(self):
-      server_data_socket = self.control_channel.init_data_channel()
-      data_channel = serverConnection(conn = server_data_socket)
-      data_channel.identity = "Data"
-      self.data_channel = data_channel
-
       # Receive the file name from the client
       file_name = self.data_channel.recv_data_payload().decode()
       with open(file_name, 'rb') as f:
@@ -56,17 +63,8 @@ class ftp_server:
           data = f.read(1024)
       
       print("File sent successfully")
-      # Close the data connection
-      self.data_channel = None
-      del self.data_channel
-
   
   def serve_put_request(self):
-      server_data_socket = self.control_channel.init_data_channel()
-      data_channel = serverConnection(conn = server_data_socket)
-      data_channel.identity = "Data"
-      self.data_channel = data_channel
-
       # Receive the file name from the client
       file_name = self.data_channel.recv_data_payload().decode()
       print("Receiving file: " + file_name)
@@ -90,26 +88,15 @@ class ftp_server:
         print("Error receiving file: " + str(e))
       
       print("File received successfully")
-      # Close the data connection
-      self.data_channel = None
-      del self.data_channel
+      
   
   def serve_ls_request(self):
-      server_data_socket = self.control_channel.init_data_channel()
-      data_channel = serverConnection(conn = server_data_socket)
-      data_channel.identity = "Data"
-      self.data_channel = data_channel
-      
       # Send the list of files to the client
       listOfFiles = ""
       for line in subprocess.getoutput("ls"):
         listOfFiles += line
       self.data_channel.send_message(listOfFiles.encode())
       print("List of files sent successfully")
-
-      # Close the data connection
-      self.data_channel = None
-      del self.data_channel
   
   def serve_quit_request(self):
       # Inform the client that the server is closing the connection
@@ -140,10 +127,9 @@ if __name__ == "__main__":
 
     server.serving_request()
     # delete the reference to the control channel and the server objects
+    # Note: close must be called to completely destroy all references to the connection
+    control_conn.close()
     del control_channel
     del server
 
     sleep(0.3)
-
-
-
