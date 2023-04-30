@@ -33,6 +33,12 @@ class ftp_client:
       request = user_input[0]
       self.control_channel.send_message(request.encode())
 
+      if request != 'quit':
+        client_data_socket = self.control_channel.init_data_channel()
+        data_channel = clientConnection(conn = client_data_socket)
+        data_channel.identity = "Data"
+        self.data_channel = data_channel
+
       if request == "get":
         file_name = user_input[1]
         self.serve_get_request(file_name)
@@ -50,18 +56,21 @@ class ftp_client:
       
       else:
           print("Invalid command. Please try again.")
+          
+      if request != 'quit':
+        self.data_channel = None
+        del data_channel
 
       print(" \n")
+
+
 
   '''
   '''     
   def serve_get_request(self, file_name):
 
     # Assign the data channel with the encapsulation of socket data connection for client side
-    client_data_socket = self.control_channel.init_data_channel()
-    data_channel = clientConnection(conn = client_data_socket)
-    data_channel.identity = "Data"
-    self.data_channel = data_channel
+    
     
     # Send the file name to the server
     self.data_channel.send_message(file_name.encode())
@@ -89,8 +98,7 @@ class ftp_client:
       print("File transfer complete.")
 
       # Tear down the data channel
-      self.data_channel = None
-      del data_channel
+      
 
     except socket.error as s_error:
       print("Socket error: " + str(s_error))
@@ -100,10 +108,7 @@ class ftp_client:
   '''
   def serve_put_request(self, file_name):
     # Assign the data channel with the encapsulation of socket data connection for client side
-    client_data_socket = self.control_channel.init_data_channel()
-    data_channel = clientConnection(conn = client_data_socket)
-    data_channel.identity = "Data"
-    self.data_channel = data_channel
+    
 
     # Send the file name to the server
     self.data_channel.send_message(file_name.encode())
@@ -122,8 +127,7 @@ class ftp_client:
       print("File transfer complete. Send total of " + str(total_bytes_sent) + " bytes.")
 
       # Tear down the data channel
-      self.data_channel = None
-      del data_channel
+     
 
     except socket.error as s_error:
       print("Socket error: " + str(s_error))
@@ -133,10 +137,7 @@ class ftp_client:
   '''
   def serve_ls_request(self):
     # Assign the data channel with the encapsulation of socket data connection for client side
-    client_data_socket = self.control_channel.init_data_channel()
-    data_channel = clientConnection(conn = client_data_socket)
-    data_channel.identity = "Data"
-    self.data_channel = data_channel
+    
 
 
     # Receive the list of files from the server over the data channel
@@ -148,8 +149,7 @@ class ftp_client:
       print(file)
 
     # Tear down the data channel
-    self.data_channel = None
-    del data_channel
+  
 
   '''
   '''
