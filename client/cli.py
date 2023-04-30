@@ -59,19 +59,15 @@ class ftp_client:
           
       if request != 'quit':
         self.data_channel = None
+        #Note: close must be called to destroy the reference to socket connection
+        client_data_socket.close()
         del data_channel
 
       print(" \n")
 
-
-
   '''
   '''     
   def serve_get_request(self, file_name):
-
-    # Assign the data channel with the encapsulation of socket data connection for client side
-    
-    
     # Send the file name to the server
     self.data_channel.send_message(file_name.encode())
     print("Receiving file: " + file_name)
@@ -97,9 +93,6 @@ class ftp_client:
           f.write(data)
       print("File transfer complete.")
 
-      # Tear down the data channel
-      
-
     except socket.error as s_error:
       print("Socket error: " + str(s_error))
           
@@ -107,9 +100,6 @@ class ftp_client:
   '''
   '''
   def serve_put_request(self, file_name):
-    # Assign the data channel with the encapsulation of socket data connection for client side
-    
-
     # Send the file name to the server
     self.data_channel.send_message(file_name.encode())
     print("Sending file: " + file_name)
@@ -126,9 +116,6 @@ class ftp_client:
             total_bytes_sent += len(data)
       print("File transfer complete. Send total of " + str(total_bytes_sent) + " bytes.")
 
-      # Tear down the data channel
-     
-
     except socket.error as s_error:
       print("Socket error: " + str(s_error))
 
@@ -136,10 +123,6 @@ class ftp_client:
   '''
   '''
   def serve_ls_request(self):
-    # Assign the data channel with the encapsulation of socket data connection for client side
-    
-
-
     # Receive the list of files from the server over the data channel
     # and print it to the screen
     while True:
@@ -148,7 +131,7 @@ class ftp_client:
         break
       print(file)
 
-    # Tear down the data channel
+    print("File list transfer complete.")
   
 
   '''
@@ -183,3 +166,6 @@ if __name__ == "__main__":
   client.taking_request()
 
   # no need to delete the referenced objects, they will be deleted automatically when the program terminates
+  client_socket.close()
+  del control_channel
+  del client
