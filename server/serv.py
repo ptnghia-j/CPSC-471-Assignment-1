@@ -21,7 +21,7 @@ class ftp_server:
   def serving_request(self):
     while True:
       # Read the message to find out about the type of request
-      request = self.control_channel.recv_data_payload()
+      request = self.control_channel.recv_data_payload().decode()
   
       if request == "get":
         self.serve_get_request()
@@ -48,11 +48,11 @@ class ftp_server:
       self.data_channel = data_channel
 
       # Receive the file name from the client
-      file_name = self.data_channel.recv_data_payload()
+      file_name = self.data_channel.recv_data_payload().decode()
       with open(file_name, 'rb') as f:
         data = f.read(1024)
         while data:
-          self.data_channel.send_message(str(data))
+          self.data_channel.send_message(data)
           data = f.read(1024)
       
       print("File sent successfully")
@@ -68,8 +68,8 @@ class ftp_server:
       self.data_channel = data_channel
 
       # Receive the file name from the client
-      file_name = self.data_channel.recv_data_payload()
-
+      file_name = self.data_channel.recv_data_payload().decode()
+      print("Receiving file: " + file_name)
       # Upload the file from the server over the data channel
       # and save it to the current working directory
       # check if the file exists, if it does append number to the end
@@ -82,12 +82,10 @@ class ftp_server:
             file_name = "{}_{}{}".format(f_name, i, f_ext)
             i += 1
         with open(file_name, 'wb') as f:
-          print("Receiving file: " + file_name)
-          data = bytes(self.data_channel.recv_data_payload(), 'utf-8')
+          data = self.data_channel.recv_data_payload()
           while data:
-            print("received: " + str(data))
             f.write(data)
-            data = bytes(self.data_channel.recv_data_payload(), 'utf-8')
+            data = self.data_channel.recv_data_payload()
       except socket.error as e:
         print("Error receiving file: " + str(e))
       
@@ -106,7 +104,7 @@ class ftp_server:
       listOfFiles = ""
       for line in subprocess.getoutput("ls"):
         listOfFiles += line
-      self.data_channel.send_message(listOfFiles)
+      self.data_channel.send_message(listOfFiles.encode())
       print("List of files sent successfully")
 
       # Close the data connection
@@ -115,7 +113,7 @@ class ftp_server:
   
   def serve_quit_request(self):
       # Inform the client that the server is closing the connection
-      self.control_channel.send_message("Server closed connection")
+      self.control_channel.send_message("Server closed connection".encode())
       self.control_channel = None
       
 if __name__ == "__main__":

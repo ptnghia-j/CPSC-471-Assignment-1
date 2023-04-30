@@ -31,7 +31,7 @@ class ftp_client:
 
       # Notify the server about the type of request through the control channel
       request = user_input[0]
-      self.control_channel.send_message(request)
+      self.control_channel.send_message(request.encode())
 
       if request == "get":
         file_name = user_input[1]
@@ -64,7 +64,7 @@ class ftp_client:
     self.data_channel = data_channel
     
     # Send the file name to the server
-    self.data_channel.send_message(file_name)
+    self.data_channel.send_message(file_name.encode())
     print("Receiving file: " + file_name)
 
     # Download the file from the server over the data channel
@@ -82,7 +82,7 @@ class ftp_client:
         file_name = new_name
       with open(file_name, 'wb') as f:
         while True:
-          data = bytes(self.data_channel.recv_data_payload(), 'utf-8')
+          data = self.data_channel.recv_data_payload()
           if not data:
               break
           f.write(data)
@@ -106,7 +106,7 @@ class ftp_client:
     self.data_channel = data_channel
 
     # Send the file name to the server
-    self.data_channel.send_message(file_name)
+    self.data_channel.send_message(file_name.encode())
     print("Sending file: " + file_name)
 
     try:
@@ -115,10 +115,9 @@ class ftp_client:
         total_bytes_sent = 0
         data = f.read(1024)
         while data:
-            self.data_channel.send_message(str(data))
+            self.data_channel.send_message(data)
             data = f.read(1024)
             print("data: " + str(data) + "\n")
-            print("length of data: " + str(len(data)) + " bytes")
             total_bytes_sent += len(data)
       print("File transfer complete. Send total of " + str(total_bytes_sent) + " bytes.")
 
@@ -143,7 +142,7 @@ class ftp_client:
     # Receive the list of files from the server over the data channel
     # and print it to the screen
     while True:
-      file = self.data_channel.recv_data_payload()
+      file = self.data_channel.recv_data_payload().decode()
       if not file:
         break
       print(file)
@@ -157,7 +156,7 @@ class ftp_client:
   def serve_quit_request(self):
     # No need to establish a data channel for this request
     # Wait for server to reply with "quit"
-    sever_message = self.control_channel.recv_data_payload()
+    sever_message = self.control_channel.recv_data_payload().decode()
     print(sever_message)
 
 

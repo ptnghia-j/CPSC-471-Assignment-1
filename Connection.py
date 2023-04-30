@@ -1,5 +1,6 @@
 import socket
 from abc import ABC, abstractmethod
+from codecs import unicode_escape_decode
 
 
 class Connection:
@@ -42,41 +43,33 @@ class Connection:
   Message format: 10 bytes of header information + data
   '''
   def send_message(self, data):
-    print("Total data before receiving: ", str(data))
-    # data payload
-    data_size = str(len(data))
+    # set header to 10 bytes
+    size = len(data)
+    data_size = size.to_bytes(10, byteorder='big')
 
-    #set header to 10 bytes
-    while len(data_size) < 10:
-      data_size = "0" + data_size
-
-    data = data_size + str(data)
+    data = data_size + data
     
     data_sent = 0
 
-    #ensure all data is sent
+    # ensure all data is sent
     while data_sent != len(data):
-      data_sent += self.conn.send(data[data_sent:].encode())
+      data_sent += self.conn.send(data[data_sent:])
 
-    print("data after sending: ", str(data))
-    print("data after encode: ", str(data.encode()))
-
-   
-          
+     
   '''
   Function to receive the specified amount of data from the connected socket.
   '''
   def recvAll(self, numBytes):
-    recvBuff = ""
-    tmpBuff = ""
+    recvBuff = b''
+    tmpBuff = b''
     # ensure all data has been received
     while len(recvBuff) < numBytes:
       tmpBuff = self.conn.recv(numBytes)
       # The other side has closed the socket
       if not tmpBuff:
         break
-      recvBuff += tmpBuff.decode()
-      print("Data received after decode at receiver: ", str(recvBuff))
+      recvBuff += tmpBuff
+      
     return recvBuff
       
   '''
@@ -92,7 +85,7 @@ class Connection:
 
     #initialize buffer for file
     if file_size_buff:
-      file_size = int(file_size_buff)
+      file_size = int.from_bytes(file_size_buff, byteorder='big')
 
     # receive a file given a file size
     data = self.recvAll(file_size)
@@ -106,7 +99,7 @@ class clientConnection(Connection):
   '''
   def init_data_channel(self):
     # Read the message for the port number of the data channel from the server
-    server_data_connect_port = self.recv_data_payload()
+    server_data_connect_port = self.recv_data_payload().decode()
     server_data_socket = (self.conn.getpeername()[0], int(server_data_connect_port))
 
     # Create new socket and connect to the server over the data channel
@@ -125,8 +118,8 @@ class serverConnection(Connection):
 
     # Notify the client about the newly created socket for data transfer
     # send back only the port number because the client already knows the IP address
-    server_data_sock_port = str((welcoming_data_sock.getsockname())[1])
-    self.send_message(server_data_sock_port)
+    server_data_sock_port =  str((welcoming_data_sock.getsockname())[1])
+    self.send_message(server_data_sock_port.encode())
 
     # Wait for the client to connect to the welcoming socket
     welcoming_data_sock.listen(1)
