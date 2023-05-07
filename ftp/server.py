@@ -2,7 +2,6 @@ import socket
 import sys
 import subprocess
 import os
-from time import sleep
 
 # append the path to the parent directory to import the Connection class
 sys.path.append('../')
@@ -31,13 +30,10 @@ class ftp_server:
 
       if request == "get":
         self.serve_get_request()
-
       elif request == "put":
         self.serve_put_request()
-
       elif request == "ls":
         self.serve_ls_request()
-
       elif request == "quit":
         self.serve_quit_request()
         break
@@ -56,6 +52,9 @@ class ftp_server:
   def serve_get_request(self):
       # Receive the file name from the client
       file_name = self.data_channel.recv_data_payload().decode()
+
+      oldwd = os.getcwd()
+      os.chdir("server_files")
       with open(file_name, 'rb') as f:
         data = f.read(1024)
         while data:
@@ -63,6 +62,7 @@ class ftp_server:
           data = f.read(1024)
       
       print("File sent successfully")
+      os.chdir(oldwd)
   
   def serve_put_request(self):
       # Receive the file name from the client
@@ -72,7 +72,9 @@ class ftp_server:
       # and save it to the current working directory
       # check if the file exists, if it does append number to the end
       # of the file name
+      oldwd = os.getcwd()
       try:
+        os.chdir("server_files")
         if os.path.exists(file_name):
           i = 1
           f_name, f_ext = os.path.splitext(file_name)
@@ -86,50 +88,25 @@ class ftp_server:
             data = self.data_channel.recv_data_payload()
       except socket.error as e:
         print("Error receiving file: " + str(e))
+      finally:
+        os.chdir(oldwd)
       
       print("File received successfully")
       
   
   def serve_ls_request(self):
       # Send the list of files to the client
+      oldwd = os.getcwd()
+      os.chdir("server_files")
       listOfFiles = ""
       for line in subprocess.getoutput("ls"):
         listOfFiles += line
       self.data_channel.send_message(listOfFiles.encode())
+
+      os.chdir(oldwd)
       print("List of files sent successfully")
   
   def serve_quit_request(self):
       # Inform the client that the server is closing the connection
       self.control_channel.send_message("Server closed connection".encode())
       self.control_channel = None
-      
-if __name__ == "__main__":
-   
-  # The port on which to listen
-  listenPort = int(sys.argv[1])
-
-  # Create a welcome socket. 
-  welcomeSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  welcomeSock.bind(('', listenPort))
-  while True:
-    # Servicing at most 1 client at a time
-    print ("Waiting for new connection...")
-    welcomeSock.listen(1)
-        
-    # Accept connections
-    control_conn, addr = welcomeSock.accept()
-    control_channel = serverConnection(conn = control_conn)
-    control_channel.identity = "Control"
-    server = ftp_server(control_channel, None)
-      
-    print ("Accepted connection from client: ", addr)
-    print ("\n")
-
-    server.serving_request()
-    # delete the reference to the control channel and the server objects
-    # Note: close must be called to completely destroy all references to the connection
-    control_conn.close()
-    del control_channel
-    del server
-
-    sleep(0.3)

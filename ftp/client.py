@@ -22,9 +22,6 @@ class ftp_client:
   def __del__(self):
     print("FTP client closed.")
 
-  '''
-
-  '''
   def taking_request(self):
     while True:
       user_input =input("ftp> ").split()
@@ -34,6 +31,9 @@ class ftp_client:
       self.control_channel.send_message(request.encode())
 
       if request != 'quit':
+        if request != 'ls' and len(user_input) < 2:
+          print("BAD REQUEST! Please try again.")
+          continue
         client_data_socket = self.control_channel.init_data_channel()
         data_channel = clientConnection(conn = client_data_socket)
         data_channel.identity = "Data"
@@ -65,8 +65,6 @@ class ftp_client:
 
       print(" \n")
 
-  '''
-  '''     
   def serve_get_request(self, file_name):
     # Send the file name to the server
     self.data_channel.send_message(file_name.encode())
@@ -76,7 +74,9 @@ class ftp_client:
     # and save it to the current working directory
     # check if the file exists, if it does append number to the end
     # of the file name
+    oldwd = os.getcwd()
     try:
+      os.chdir("client_files")
       if os.path.exists(file_name):
         i = 1
         f_name, f_ext = os.path.splitext(file_name)
@@ -92,19 +92,20 @@ class ftp_client:
               break
           f.write(data)
       print("File transfer complete.")
-
     except socket.error as s_error:
       print("Socket error: " + str(s_error))
+    finally:
+      os.chdir(oldwd)
           
-      
-  '''
-  '''
+  
   def serve_put_request(self, file_name):
     # Send the file name to the server
     self.data_channel.send_message(file_name.encode())
     print("Sending file: " + file_name)
 
+    oldwd = os.getcwd()
     try:
+      os.chdir("client_files")
       with open(file_name, 'rb') as f:
         # Send 1024 bytes of data at a time
         total_bytes_sent = 0
@@ -112,16 +113,13 @@ class ftp_client:
         while data:
             self.data_channel.send_message(data)
             data = f.read(1024)
-            print("data: " + str(data) + "\n")
             total_bytes_sent += len(data)
       print("File transfer complete. Send total of " + str(total_bytes_sent) + " bytes.")
-
     except socket.error as s_error:
       print("Socket error: " + str(s_error))
+    finally:
+      os.chdir(oldwd)
 
-
-  '''
-  '''
   def serve_ls_request(self):
     # Receive the list of files from the server over the data channel
     # and print it to the screen
@@ -133,39 +131,8 @@ class ftp_client:
 
     print("File list transfer complete.")
   
-
-  '''
-  '''
   def serve_quit_request(self):
     # No need to establish a data channel for this request
     # Wait for server to reply with "quit"
     sever_message = self.control_channel.recv_data_payload().decode()
     print(sever_message)
-
-
-
-if __name__ == "__main__":                 
-  # Command line checks 
-  if len(sys.argv) < 2:
-    print ("USAGE python " + sys.argv[0] + " <FILE NAME>" )
-
-  # Server address and port 
-  serverAddr = sys.argv[1]
-  serverPort = int(sys.argv[2])
-  print("Server address: " + serverAddr + ", server port: " + str(serverPort))
-
-
-  # TCP control channel setup
-  client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  client_socket.connect((serverAddr, serverPort))
-  control_channel = clientConnection(conn = client_socket)
-  control_channel.identity = "Control"
-
-  # After control channel is established, create a client object
-  client = ftp_client(control_channel, None)
-  client.taking_request()
-
-  # no need to delete the referenced objects, they will be deleted automatically when the program terminates
-  client_socket.close()
-  del control_channel
-  del client
